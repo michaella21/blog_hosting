@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+ 	
+		<h1> New Post</h1>
+		<div class ='row divider green'>
+		<form method='post'>
+
+		<dl>
+			<dt> Subject:</dt>
+				<dd><input type ='text' size='30' name='subject'></dd>
+			<dt> Content: </dt>
+				<dd><textarea rows='5' cols='50' name='content'></textarea></dd>
+		</dl>
+		<h3> Would you like to publish it?</h3>
+    	<dd><input type='radio' name='consent' value=1> Yes
+    	<input type='radio' name='consent' value=0> No </dd>
+    <h3> If yes, please also choose the category for this post! <h3>
+    	<h4>
+    	<dd><input type='radio' name='category' value='review'> Book/Movie/TV Show reviews </dd>
+    	<dd><input type='radio' name='category' value='food'> Food/Restaurant </dd>
+    	<dd><input type='radio' name='category' value='politics'> Politics </dd>
+    	<dd><input type='radio' name='category' value='travel'> Travel </dd>
+    	<dd><input type='radio' name='category' value='animal'> Cute Animals </dd>
+    	<dd><input type='radio' name='category' value='life'> Daily Life</dd></h4>
+
+
+		<input type='submit' value = 'Create'>
+
+		</form>
+	
+{% endblock %}
