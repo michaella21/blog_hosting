@@ -1,31 +1,92 @@
 {% extends "base.html" %}
 {% block content %}
- 	
+ 	  <style type="text/css">
+      .label {text-align: right}
+      .error {color: red}
+    </style>
 		<h1> New Post</h1>
 		<div class ='row divider green'>
-		<form method='post'>
+		<form method='post' enctype='multipart/form-data' action="{{ url_for('newPost')}}">
 
 		<dl>
-			<dt> Subject:</dt>
-				<dd><input type ='text' size='30' name='subject'></dd>
+			<dt>Subject:</dt>
+				<dd><input type ='text' size='30' name='subject' value={{subject}}></dd>
 			<dt> Content: </dt>
-				<dd><textarea rows='5' cols='50' name='content'></textarea></dd>
+				<dd><textarea rows='5' cols='50' name='content'>{{content}}</textarea></dd>
+			<dd class='error'>
+				{{error_content}}
+			</dd>
 		</dl>
 		<h3> Would you like to publish it?</h3>
-    	<dd><input type='radio' name='consent' value=1> Yes
-    	<input type='radio' name='consent' value=0> No </dd>
+    	{% if publish_consent == 'True' %}
+    	<dd><input type='radio' name='consent' value=True checked> Yes
+        {% else %}
+        <dd><input type='radio' name='consent' value= True> Yes
+        {% endif %}
+
+        {% if publish_consent == 'False' %}
+    	<input type='radio' name='consent' value=False checked> No </dd>
+        {% else %}
+        <input type='radio' name='consent' value=False> No </dd>
+        {% endif %}
+    	<dd class='error'>
+				{{error_consent}}
+			</dd>
+
     <h3> If yes, please also choose the category for this post! <h3>
     	<h4>
+    	{% if category == 'review' %}
+    	<dd><input type='radio' name='category' value='review' checked> Book/Movie/TV Show reviews </dd>
+    	{% else %}
     	<dd><input type='radio' name='category' value='review'> Book/Movie/TV Show reviews </dd>
+    	{% endif %}
+
+    	{% if category == 'food' %}
+    	<dd><input type='radio' name='category' value='food' checked> Food/Restaurant </dd>
+    	{% else %}
     	<dd><input type='radio' name='category' value='food'> Food/Restaurant </dd>
+    	{% endif %}
+
+    	{% if category == 'politics' %}
+    	<dd><input type='radio' name='category' value='politics' checked> Politics </dd>
+    	{% else %}
     	<dd><input type='radio' name='category' value='politics'> Politics </dd>
+    	{% endif %}
+
+    	{% if category == 'travel' %}
+    	<dd><input type='radio' name='category' value='travel' checked> Travel </dd>
+    	{% else %}
     	<dd><input type='radio' name='category' value='travel'> Travel </dd>
+    	{% endif %}
+
+    	{% if category == 'animal' %}
+    	<dd><input type='radio' name='category' value='animal' checked> Cute Animals </dd>
+    	{% else %}
     	<dd><input type='radio' name='category' value='animal'> Cute Animals </dd>
-    	<dd><input type='radio' name='category' value='life'> Daily Life</dd></h4>
+    	{% endif %}
 
-
-		<input type='submit' value = 'Create'>
-
+    	{% if category == 'life' %}
+    	<dd><input type='radio' name='category' value='life' checked> Daily Life</dd>
+    	{% else %}
+    	<dd><input type='radio' name='category' value='life'> Daily Life</dd>
+    	{% endif %}
+    	
+    	{% if category == 'etc' %}
+    	<dd><input type='radio' name='category' value='etc' checked> Don't want to be categorized?</dd></h4>
+    	{% else %}
+    	<dd><input type='radio' name='category' value='etc'> Don't want to be categorized?</dd></h4>
+    	{% endif %}
+    	<dd class='error'>
+				{{error_category}}
+			</dd>
+ 
+		<p> Would you like to attach any image file to your post? 
+			<br>
+		 (Only pdf, png, jpg, jpeg, gif file of size less than 16MB can be submitted)</p>
+			<input type='file' name='photo'>
+			 <p>
+		<input type='submit' value = 'Submit'>
+	  </p>
 		</form>
-	
+		
 {% endblock %}

@@ -71,15 +71,14 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'))
     user = relationship(User)
-    subject = Column(String(250), default='No title')
+    subject = Column(String(250))
     content = Column(Text)
     short_content = Column(String(250))
     created = Column(Integer)
     last_modified = Column(Integer)
     likes = Column(Integer, default=0)
-    publish_consent = Column(Boolean, default=0)
-    category = Column(String(50))
-    published = Column(Integer)
+    publish = Column(String(50))
+    attached_img = Column(String(300))
 
     # take the first 12 words to present in the main page.
     def get_short_content(self):
@@ -93,18 +92,28 @@ class Post(Base):
         """Return object data in easily serializeable format"""
         return {
             'id': self.id,
-            'blog_id': self.blog_id,
+            'user_id': self.user_id,
             'subject': self.subject,
             'content': self.content,
             'short_content': self.short_content,
             'created': self.created,
             'last_modified': self.last_modified,
-            'publish_consent': self.publish_consent,
+            'publish': self.publish,
+            'attached_img': self.attached_img,
         }
 
 
+class Comment(Base):
+    __tablename__ = 'comment'
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey('post.id'))
+    post = relationship(Post)
+    commented = Column(Integer)
+    commenter = Column(Integer, ForeignKey('user.id'))
+    user = relationship(User)
+    comment_body = Column(Text)
 
 
-engine = create_engine('sqlite:///metablog.db')
+engine = create_engine('sqlite:///bloghost.db')
 
 Base.metadata.create_all(engine)

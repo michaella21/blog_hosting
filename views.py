@@ -1,4 +1,5 @@
 import sys
+import os
 import random
 import string
 import json
@@ -10,17 +11,43 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm.exc import NoResultFound
 
 from flask import Flask, render_template, request, redirect, url_for
-from flask import flash, make_response
+from flask import flash, make_response, jsonify
 from flask import session as login_session
+from flask import send_from_directory
+
+# http://flask.pocoo.org/docs/0.12/patterns/fileuploads/
+from werkzeug.utils import secure_filename
 
 from models import Base, User, Post
+from forms import newPostForm
 
 sys.path.append('../')
-engine = create_engine('sqlite:///metablog.db')
+engine = create_engine('sqlite:///bloghost.db')
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 app = Flask(__name__)
+
+UPLOAD_FOLDER = 'static/photos'
+ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'jpeg', 'gif'])
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def upload(file):
+    # before storing the data, forge it to the secure name
+    filename = secure_filename(file.filename)
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    return os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+
+@app.route('/files/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 @app.route('/login')
@@ -34,40 +61,36 @@ def showLogin():
 @app.route('/')
 @app.route('/main')
 def showMainPage():
-    recent = session.query(Post).filter_by(
-        publish_consent=1).order_by(Post.created).limit(10)
-    tops = session.query(Post).filter_by(
-        publish_consent=1).order_by(Post.likes).limit(10)
+    recent = session.query(Post).filter(
+        Post.publish != 'no').order_by(Post.created).limit(10)
+    tops = session.query(Post).filter(
+        Post.publish != 'no').order_by(Post.likes).limit(10)
     return render_template("main.html", recent=recent, tops=tops)
 
 
-@app.route('/newpost', methods=['GET', 'POST'])
-def addNewPost():
+@app.route('/post', methods=['GET', 'POST'])
+def newPost():
     if 'username' not in login_session:
         return redirect('/login')
-    if request.method == 'POST':
-        post = Post(subject=request.form['subject'],
+    form = newPostForm()
+    if form.validate_on_submit():
+        post = Post(subject=form.subject.data,
                     user_id=login_session['user_id'],
-                    content=request.form['content'],
+                    content=form.content.data,
                     created=time(),
-                    # need to force type=int to avoid default unicode type
-                    publish_consent=(request.form.get('consent', type=int)))
-
-        # by default, last_modified has the same value as the created.
+                    publish=form.publish.data)
         post.last_modified = post.created
         post.get_short_content()
-
-        if post.publish_consent == 1:
-            post.category = request.form['category']
-            post.published = post.created
+        if form.image.data and allowed_file(form.image.data.filename):
+            file = form.image.data
+            post.attached_img = upload(file)
 
         session.add(post)
         session.commit()
-
-        flash('New post is created!')
+        print post.subject, post.created, post.publish, post.attached_img
         return redirect('/')
-    else:
-        return render_template("new_post.html")
+    print form.errors
+    return render_template('newPost.html', form=form)
 
 
 @app.route('/viewpost/<int:post_id>', methods=['GET', 'POST'])
@@ -82,27 +105,26 @@ def viewPost(post_id):
     else:
         return render_template("view_post.html", post=post)
 
-
+"""
 @app.route('/editpost/<int:post_id>', methods=['GET', 'POST'])
 def editPost(post_id):
     post = session.query(Post).filter_by(id=post_id).one()
-    creator = session.query(User).filter_by(id=post.user_id).one()
+    creator = session.query(User).filter_by(id=post.user_id).all()
     if request.method == 'POST':
         post.subject = request.form['subject']
         post.content = request.form['content']
         post.publish_consent = request.form['consent']
         post.last_modified = time()
-        if post.publish_consent == True:
-            published_post = Published(subject=request.form['subject'],
-                                       category=request.form['category'],
-                                       published=time())
-            published_post.short_content = post.get_short_content()
-            session.add(published_post)
+        if post.category != request.form['category']:
+            post.category = request.form['category']
+            post.published = time()
+
+        session.add(post)
         session.commit()
         return redirect(url_for('viewPost', post_id=post_id))
     else:
-        return render_template("edit_post.html", post=post,
-                               published_post=published_post)
+        print post.subject
+        return render_template("edit_post.html", post=post)
 
 
 @app.route('/deletepost/<int:post_id>', methods=['GET', 'POST'])
@@ -120,6 +142,9 @@ def deletePost(post_id):
         return redirect('/')
     else:
         return render_template("delete_post.html", post=post)
+
+
+"""
 
 
 @app.route('/logout')

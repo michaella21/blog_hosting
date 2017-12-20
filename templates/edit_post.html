@@ -7,18 +7,18 @@
 
 		<dl>
 			<dt> Subject:</dt>
-				<dd><input type ='text' size='30' name='subject' value={{post.subject}}></dd>
+				<dd><input type ='text' size='30' name='subject' value='{{post.subject}}'></dd>
 			<dt> Content: </dt>
 				<dd><textarea rows='5' cols='50' name='content'>{{post.content}}</textarea></dd>
 		</dl>
 		<h3> Would you like to publish it?</h3>
-        {% if post.publish_consent == True %}
+        {% if post.publish_consent == 1 %}
     	<dd><input type='radio' name='consent' value='True' checked> Yes
         {% else %}
         <dd><input type='radio' name='consent' value='True'> Yes
         {% endif %}
 
-        {% if post.publish_consent == False %}
+        {% if post.publish_consent == 0 %}
     	<input type='radio' name='consent' value='False' checked> No </dd>
         {% else %}
         <input type='radio' name='consent' value='False'> No </dd>
@@ -26,37 +26,37 @@
         
     <h3> If yes, please also choose the category for this post! <h3>
     	<h4>
-    	{% if published_post.category == 'review' %}
+    	{% if post.category == 'review' %}
     	<dd><input type='radio' name='category' value='review' checked> Book/Movie/TV Show reviews </dd>
     	{% else %}
     	<dd><input type='radio' name='category' value='review'> Book/Movie/TV Show reviews </dd>
     	{% endif %}
 
-    	{% if published_post.category == 'food' %}
+    	{% if post.category == 'food' %}
     	<dd><input type='radio' name='category' value='food' checked> Food/Restaurant </dd>
     	{% else %}
     	<dd><input type='radio' name='category' value='food'> Food/Restaurant </dd>
     	{% endif %}
 
-    	{% if published_post.category == 'politics' %}
+    	{% if post.category == 'politics' %}
     	<dd><input type='radio' name='category' value='politics' checked> Politics </dd>
     	{% else %}
     	<dd><input type='radio' name='category' value='politics'> Politics </dd>
     	{% endif %}
 
-    	{% if published_post.category == 'travel' %}
+    	{% if post.category == 'travel' %}
     	<dd><input type='radio' name='category' value='travel' checked> Travel </dd>
     	{% else %}
     	<dd><input type='radio' name='category' value='travel'> Travel </dd>
     	{% endif %}
 
-    	{% if published_post.category == 'animal' %}
+    	{% if post.category == 'animal' %}
     	<dd><input type='radio' name='category' value='animal' checked> Cute Animals </dd>
     	{% else %}
     	<dd><input type='radio' name='category' value='animal'> Cute Animals </dd>
     	{% endif %}
 
-    	{% if published_post.category == 'life' %}
+    	{% if post.category == 'life' %}
     	<dd><input type='radio' name='category' value='life' checked=""> Daily Life</dd></h4>
     	{% else %}
     	<dd><input type='radio' name='category' value='life'> Daily Life</dd></h4>
