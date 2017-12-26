@@ -5,21 +5,23 @@ import string
 import json
 import httplib2
 from time import time
+from datetime import datetime
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import exc
 
 from flask import Flask, render_template, request, redirect, url_for
-from flask import flash, make_response, jsonify
+from flask import flash, make_response, jsonify, g
 from flask import session as login_session
 from flask import send_from_directory
 
 # http://flask.pocoo.org/docs/0.12/patterns/fileuploads/
 from werkzeug.utils import secure_filename
 
-from models import Base, User, Post
-from forms import newPostForm
+from models import Base, User, Post, Likes, Comment
+from forms import NewPostForm, CommentForm
 
 sys.path.append('../')
 engine = create_engine('sqlite:///bloghost.db')
@@ -51,7 +53,7 @@ def uploaded_file(filename):
 
 
 @app.route('/login')
-def showLogin():
+def login():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                     for x in xrange(32))
     login_session['state'] = state
@@ -60,7 +62,7 @@ def showLogin():
 
 @app.route('/')
 @app.route('/main')
-def showMainPage():
+def main_page():
     recent = session.query(Post).filter(
         Post.publish != 'no').order_by(Post.created).limit(10)
     tops = session.query(Post).filter(
@@ -69,10 +71,10 @@ def showMainPage():
 
 
 @app.route('/post', methods=['GET', 'POST'])
-def newPost():
+def new_post():
     if 'username' not in login_session:
         return redirect('/login')
-    form = newPostForm()
+    form = NewPostForm()
     if form.validate_on_submit():
         post = Post(subject=form.subject.data,
                     user_id=login_session['user_id'],
@@ -87,64 +89,112 @@ def newPost():
 
         session.add(post)
         session.commit()
-        print post.subject, post.created, post.publish, post.attached_img
         return redirect('/')
     print form.errors
-    return render_template('newPost.html', form=form)
+    return render_template('post.html', form=form, action=url_for('new_post'))
 
 
 @app.route('/viewpost/<int:post_id>', methods=['GET', 'POST'])
-def viewPost(post_id):
+def view_post(post_id):
     post = session.query(Post).filter_by(id=post_id).one()
+    creator = session.query(User).filter_by(id=post.user_id).one()
+    if 'username' not in login_session:
+        return redirect('/login')
     if request.method == 'POST':
+        login_session.pop('_flashes', None)
+
+        # creator itself cannot like its own post
+        if login_session['user_id'] == creator.id:
+            flash('You cannot like your own post.')
+            return redirect('/')
+
+        # user cannot like the same post more than one time. If one tries to,
+        # it raises integrity error (unique constraint failed)
         if request.form['submit'] == "Like it":
-            post.likes += 1
-            session.add(post)
-            session.commit()
-        return redirect('/')
+            try:
+                like = Likes(user_id=login_session['user_id'],
+                             post_id=post_id)
+                session.add(like)
+                session.flush()
+            except exc.IntegrityError:
+                session.rollback()
+                flash("You already liked this post")
+            else:
+                post.likes += 1
+                session.add(post)
+                session.commit()
+            return redirect('/')
     else:
-        return render_template("view_post.html", post=post)
+        # private post is only open to the creator itself
+        if post.publish == 'no' and creator.id != login_session['user_id']:
+            flash('This post is private')
+            return redirect('/')
+        else:
+            form = CommentForm()
+            comments = session.query(Comment).filter_by(
+                post_id=post_id).order_by(Comment.commented_ts).all()
 
-"""
-@app.route('/editpost/<int:post_id>', methods=['GET', 'POST'])
-def editPost(post_id):
+            return render_template("view_post.html", post=post, form=form, comments=comments)
+
+
+@app.route('/comment/<int:post_id>', methods=['GET', 'POST'])
+def comment_post(post_id):
+    form = CommentForm()
     post = session.query(Post).filter_by(id=post_id).one()
-    creator = session.query(User).filter_by(id=post.user_id).all()
-    if request.method == 'POST':
-        post.subject = request.form['subject']
-        post.content = request.form['content']
-        post.publish_consent = request.form['consent']
-        post.last_modified = time()
-        if post.category != request.form['category']:
-            post.category = request.form['category']
-            post.published = time()
+    if 'username' not in login_session:
+        flash('You need to login first to leave a comment')
+        return redirect('/login')
+    if form.validate_on_submit():
+        comment = Comment(post_id=post_id,
+                          commented_ts=time(),
+                          commenter=login_session['username'],
+                          comment_body=form.comment.data)
+        comment.commented_dt = datetime.utcfromtimestamp(
+            comment.commented_ts).strftime('%Y-%m-%d %H:%M:%S')
+        session.add(comment)
+        session.commit()
+        comments = session.query(
+            Comment).filter_by(post_id=post_id).order_by(
+            Comment.commented_ts).all()
 
+        return redirect(url_for('view_post', post_id=post_id))
+
+    print form.errors
+    return render_template('view_post.html', post=post, form=form)
+
+
+@app.route('/editpost/<int:post_id>', methods=['GET', 'POST'])
+def edit_post(post_id):
+    post = session.query(Post).filter_by(id=post_id).one()
+    # creator = session.query(User).filter_by(id=post.user_id).all()
+    # Populate the form from the data
+    form = NewPostForm(obj=post)
+    if form.validate_on_submit():
+        form.populate_obj(post)
+        post.last_modified = time()
+        post.get_short_content()
+        if form.image.data and allowed_file(form.image.data.filename):
+            file = form.image.data
+            post.attached_img = upload(file)
         session.add(post)
         session.commit()
-        return redirect(url_for('viewPost', post_id=post_id))
-    else:
-        print post.subject
-        return render_template("edit_post.html", post=post)
+        return redirect(url_for('view_post', post_id=post_id))
+    print form.errors
+    return render_template('post.html', form=form,
+                           action=url_for('edit_post', post_id=post.id))
 
 
 @app.route('/deletepost/<int:post_id>', methods=['GET', 'POST'])
-def deletePost(post_id):
+def delete_post(post_id):
     post = session.query(Post).filter_by(id=post_id).one()
-    published_post = session.query(Published).filter_by(
-        id=post.id).one_or_none()
-    creator = session.query(User).filter_by(id=post.user_id).one()
+    # creator = session.query(User).filter_by(id=post.user_id).one()
     if request.method == 'POST':
         session.delete(post)
-        if published_post is not None:
-            session.delete(published_post)
         session.commit()
         flash('Your post is successfully deleted.')
         return redirect('/')
     else:
         return render_template("delete_post.html", post=post)
-
-
-"""
 
 
 @app.route('/logout')
@@ -165,10 +215,10 @@ def disconnect():
         login_session.pop('provider', None)
 
         flash('You have successfully been logged out.')
-        return redirect(url_for('showMainPage'))
+        return redirect(url_for('main_page'))
     else:
         flash("You were not logged in")
-        return redirect(url_for('showMainPage'))
+        return redirect(url_for('main_page'))
 
 # Facebook login/logout
 

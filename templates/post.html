@@ -16,7 +16,7 @@
 {% endfor %}
 
 		<div class ='row divider green'>		
-		<form method='post' enctype='multipart/form-data' action="{{ url_for('newPost')}}">
+		<form method='post' enctype='multipart/form-data' action="{{ action }}">
 			{{ form.hidden_tag() }}
 			<dl>
 			<dt>{{ form.subject.label}}:</dt>

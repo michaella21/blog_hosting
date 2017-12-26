@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from models import Base, User, Project
+from models import Base, User, Post, Comment, Likes
 
-engine = create_engine('sqlite:///projectsCatalog.db')
+engine = create_engine('sqlite:///bloghost.db')
 # Bind the engine to the metadata of the Base class so that the
 # declaratives can be accessed through a DBSession instance
 Base.metadata.bind = engine
@@ -22,49 +22,53 @@ session = DBSession()
 # Create dummy user
 User1 = User(username="Tiny Rob", email="tenny@tiny.com")
 
-session.add(User1)
-session.commit()
-
-# Projects for the user1
-proj1 = Project(user_id=1, name="Unique Blog", main_language="python")
-proj1.description = "Very very unique blog written from scratch" + \
-    "which includes lots of fun info about myself!"
-
-session.add(proj1)
-session.commit()
-
-proj2 = Project(user_id=1, name="Mock Online Store", main_language="PHP")
-proj2.description = "Online store equipped with all the necessary function" +\
-    " but without actual items to sell"
-
-session.add(proj2)
-session.commit()
-
-proj3 = Project(user_id=1, name="Cool Portfolio", main_language="HTML/CSS")
-proj3.description = "HTML page showing all my cool projects"
-
-session.add(proj3)
-session.commit()
 
 User2 = User(username="Frontend Ninja", email="ninja@front.com")
 
+
+User3 = User(username="Jersey Girl", email="girl@jersey.com")
+
+session.add(User1)
 session.add(User2)
+session.add(User3)
+
+# Create dummy user's posts
+Post1 = Post(user_id=2,
+             subject="Lorem ipsum",
+             content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+             publish="no"
+             )
+Post1.get_short_content()
+Post2 = Post(user_id=3,
+             subject="Blah Blah",
+             content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+             publish="etc",
+             likes=2)
+Post2.get_short_content()
+session.add(Post1)
+session.add(Post2)
+
+Comment1 = Comment(post_id=2,
+                   commenter="Tiny Rob",
+                   commented_ts=1514329311.27646,
+                   commented_dt='2017-12-26 23:01:51',
+                   comment_body='What a cool story!')
+
+Comment2 = Comment(post_id=2,
+                   commenter='Frontend Ninja',
+                   commented_ts=1514329719.58813,
+                   commented_dt='2017-12-26 23:08:39',
+                   comment_body='I agree! such a cool stroy!!')
+session.add(Comment1)
+session.add(Comment2)
+
+likes1 = Likes(post_id=2,
+               user_id=1)
+
+likes2 = Likes(post_id=2,
+               user_id=2)
+
+session.add(likes1)
+session.add(likes2)
+
 session.commit()
-
-# Projects for the user2
-proj4 = Project(user_id=2, name="Movie Reviews", main_language="HTML/CSS")
-proj4.description = "List of movies that I watch along with movietrilers, etc"
-
-session.add(proj4)
-session.commit()
-
-proj5 = Project(user_id=2, name="Interactive Resume",
-                main_language="JavaScript")
-proj5.description = "Not anymore regular resume, it's now fancied up with" +\
-    "all new Interactive functions!"
-
-session.add(proj5)
-session.commit()
-
-
-print "added menu items!"

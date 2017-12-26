@@ -1,5 +1,5 @@
-from sqlalchemy import Column, ForeignKey
-from sqlalchemy import Boolean, Integer, String, Text
+from sqlalchemy import Column, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Integer, String, Text, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 # from sqlalchemy.sql import functions as func
@@ -15,6 +15,8 @@ Base = declarative_base()
 secret_key = ''.join(random.choice(
     string.ascii_uppercase + string.digits) for x in xrange(32))
 
+# User to Post = one to many, foreing key on Post, relationship on User
+
 
 class User(Base):
     __tablename__ = 'user'
@@ -26,7 +28,6 @@ class User(Base):
     password_hash = Column(String(250))
     blog = Column(String(250), default="My new blog")
     created = Column(Integer)
-    blog_public = Column(Boolean, default=False)
 
     def hash_password(self, password):
         self.password_hash = pwd_context.hash(password)
@@ -103,13 +104,26 @@ class Post(Base):
         }
 
 
+class Likes(Base):
+    __tablename__ = 'likes'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    post_id = Column(Integer, ForeignKey('post.id'), nullable=False)
+    user = relationship(User)
+    post = relationship(Post)
+
+    # there can be only one pair of user_id, post_id
+    __table_args__ = (UniqueConstraint('user_id', 'post_id'),)
+
+
 class Comment(Base):
     __tablename__ = 'comment'
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey('post.id'))
     post = relationship(Post)
-    commented = Column(Integer)
-    commenter = Column(Integer, ForeignKey('user.id'))
+    commented_ts = Column(Float)
+    commented_dt = Column(String(250))
+    commenter = Column(String(32), ForeignKey('user.username'))
     user = relationship(User)
     comment_body = Column(Text)
 

@@ -5,7 +5,7 @@ from wtforms import TextField, SubmitField, FileField
 from wtforms import validators
 
 
-class newPostForm(BaseForm):
+class NewPostForm(BaseForm):
     subject = TextField("Subject",
                         [validators.DataRequired("Please enter the subject of\
                         your post.")])
@@ -25,4 +25,11 @@ class newPostForm(BaseForm):
 
     image = FileField('Would you like to attach any image file to your post?\
                        pdf, jpg, jpeg, png, gif files upto 16MB accepted')
+    submit = SubmitField("submit")
+
+
+class CommentForm(BaseForm):
+    comment = TextAreaField("Leave your comment",
+                            [validators.DataRequired("You cannot submit\
+                            empty content.")])
     submit = SubmitField("submit")

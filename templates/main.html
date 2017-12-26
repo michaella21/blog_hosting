@@ -32,7 +32,7 @@
 			<div class="row padding-top padding-bottom">
 					<div class="col-md-1"></div>
 					<div class="col-md-10 padding-none">
-						<a href="{{url_for('newPost')}}">
+						<a href="{{url_for('new_post')}}">
 							<button class="btn btn-default" id="new-restaurant">
 								<span class="glyphicon glyphicon-cutlery" area-hidden="true"></span> Write a new post
 							</button>
@@ -46,7 +46,7 @@
 					<div class="col-md-1"></div>
 						<div class="col-md-10 restaurant-list">
 							<h3>{{p.subject}}</h3>
-							<a href ="{{ url_for('viewPost', post_id=p.id)}}">
+							<a href ="{{ url_for('view_post', post_id=p.id)}}">
 							<h4>{{p.short_content}}<h4>
 						</div>
 					<div class="col-md-1"></div>
@@ -67,7 +67,7 @@
 					<div class="col-md-1"></div>
 						<div class="col-md-10 restaurant-list">
 							<h3>{{t.subject}}<h5>Likes: {{t.likes}}</h5></h3>
-							<a href ="{{ url_for('viewPost', post_id=t.id)}}">
+							<a href ="{{ url_for('view_post', post_id=t.id)}}">
 							<h4>{{t.short_content}}<h4></a>
 							
 						</div>
