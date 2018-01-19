@@ -26,8 +26,6 @@ class User(Base):
     # to look up with the unique email
     email = Column(String(250), index=True)
     password_hash = Column(String(250))
-    blog = Column(String(250), default="My new blog")
-    created = Column(Integer)
 
     def hash_password(self, password):
         self.password_hash = pwd_context.hash(password)
@@ -47,9 +45,6 @@ class User(Base):
             'username': self.username,
             'picture': self.username,
             'email': self.email,
-            'blog': self.blog,
-            'created': self.created,
-            'blog_public': self.blog_public,
         }
 
     @staticmethod  # because user is only known when the token is decoded
@@ -67,11 +62,43 @@ class User(Base):
         return user_id
 
 
+class Blog(Base):
+    __tablename__ = 'blog'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    user = relationship(User)
+    blog_name = Column(String(250), default="Name your blog")
+    public_username = Column(String(50))
+    short_intro = Column(String(300),
+                         default="Write a little bit about your blog")
+    profile_img = Column(String(300))
+    location = Column(String(250))
+    created = Column(Integer)
+    last_modified = Column(Integer)
+
+    @property
+    def serialize(self):
+        """Return object data in easily serializeable format"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'blog_name': self.blog_name,
+            'public_username': self.public_username,
+            'short_intro': self.short_intro,
+            'profile_img': self.profile_img,
+            'location': self.location,
+            'created': self.created,
+            'last_modified': self.last_modified,
+        }
+
+
 class Post(Base):
     __tablename__ = 'post'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'))
     user = relationship(User)
+    blog_id = Column(Integer, ForeignKey('blog.id'))
+    blog = relationship(Blog)
     subject = Column(String(250))
     content = Column(Text)
     short_content = Column(String(250))
@@ -94,11 +121,13 @@ class Post(Base):
         return {
             'id': self.id,
             'user_id': self.user_id,
+            'blog_id': self.blog_id,
             'subject': self.subject,
             'content': self.content,
             'short_content': self.short_content,
             'created': self.created,
             'last_modified': self.last_modified,
+            'likes': self.likes,
             'publish': self.publish,
             'attached_img': self.attached_img,
         }
@@ -126,6 +155,18 @@ class Comment(Base):
     commenter = Column(String(32), ForeignKey('user.username'))
     user = relationship(User)
     comment_body = Column(Text)
+
+    @property
+    def serialize(self):
+        """Return object data in easily serializeable format"""
+        return {
+            'id': self.id,
+            'post_id': self.post_id,
+            'commented_ts': self.commented_ts,
+            'commented_dt': self.commented_dt,
+            'commenter': self.commenter,
+            'comment_body': self.comment_body,
+        }
 
 
 engine = create_engine('sqlite:///bloghost.db')

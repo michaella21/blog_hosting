@@ -20,8 +20,16 @@ from flask import send_from_directory
 # http://flask.pocoo.org/docs/0.12/patterns/fileuploads/
 from werkzeug.utils import secure_filename
 
-from models import Base, User, Post, Likes, Comment
-from forms import NewPostForm, CommentForm
+# need to install
+# https://developers.google.com/api-client-library/python/auth/
+# web-app#protectauthcode 
+#import google.oauth2.credentials
+#import google_auth_oauthlib.flow
+
+from flask_oauthlib.client import OAuth
+
+from models import Base, User, Post, Blog, Likes, Comment
+from forms import NewPostForm, CommentForm, BlogForm
 
 sys.path.append('../')
 engine = create_engine('sqlite:///bloghost.db')
@@ -29,29 +37,38 @@ Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 app = Flask(__name__)
+oauth = OAuth(app)
 
 UPLOAD_FOLDER = 'static/photos'
 ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'jpeg', 'gif'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
+# check the file extension preventing XSS problems
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def upload(file):
+# save the attached file in the upload folder and return the forged filename
+def upload(file, prefix, suffix):
     # before storing the data, forge it to the secure name
     filename = secure_filename(file.filename)
+    file_body = filename.rsplit('.', 1)[0].lower()
+    file_ext = '.' + filename.rsplit('.', 1)[1].lower()
+    filename = prefix + '-' + file_body + '-' + suffix + file_ext
     file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    return os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    return filename
 
 
-@app.route('/files/<filename>')
+# retrieve the image file from the upload_folder
+@app.route('/files/<path:filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
+# Create a state token to prevent request forgery
+# Store it in the session for later validation
 @app.route('/login')
 def login():
     state = ''.join(random.choice(string.ascii_uppercase + string.digits)
@@ -64,20 +81,40 @@ def login():
 @app.route('/main')
 def main_page():
     recent = session.query(Post).filter(
-        Post.publish != 'no').order_by(Post.created).limit(10)
+        Post.publish != 'no').order_by(Post.created).limit(5)
     tops = session.query(Post).filter(
-        Post.publish != 'no').order_by(Post.likes).limit(10)
-    return render_template("main.html", recent=recent, tops=tops)
+        Post.publish != 'no').order_by(Post.likes).limit(5)
+    for key in login_session:
+        print key, login_session[key]
+    
+    return render_template("main.html",
+                           recent=recent,
+                           tops=tops,
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'))
+
+
+@app.route('/JSON')
+@app.route('/main/JSON')
+def show_main_page_JSON():
+    recent = session.query(Post).filter(
+        Post.publish != 'no').order_by(Post.created).limit(5)
+    tops = session.query(Post).filter(
+        Post.publish != 'no').order_by(Post.likes).limit(5)
+    return jsonify(recent=[r.serialize for r in recent],
+                   tops=[t.serialize for t in tops])
 
 
 @app.route('/post', methods=['GET', 'POST'])
 def new_post():
+    # only signed user can write a new post
     if 'username' not in login_session:
         return redirect('/login')
     form = NewPostForm()
     if form.validate_on_submit():
         post = Post(subject=form.subject.data,
                     user_id=login_session['user_id'],
+                    blog_id=login_session['blog_id'],
                     content=form.content.data,
                     created=time(),
                     publish=form.publish.data)
@@ -85,28 +122,29 @@ def new_post():
         post.get_short_content()
         if form.image.data and allowed_file(form.image.data.filename):
             file = form.image.data
-            post.attached_img = upload(file)
+            # save the file name with prefix(blog_id) and suffix(created)
+            post.attached_img = upload(file,
+                                       str(login_session['blog_id']),
+                                       str(int(post.created)))
 
         session.add(post)
         session.commit()
         return redirect('/')
     print form.errors
-    return render_template('post.html', form=form, action=url_for('new_post'))
+    return render_template('post.html', form=form, action=url_for('new_post'),
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'))
 
 
 @app.route('/viewpost/<int:post_id>', methods=['GET', 'POST'])
 def view_post(post_id):
     post = session.query(Post).filter_by(id=post_id).one()
     creator = session.query(User).filter_by(id=post.user_id).one()
-    if 'username' not in login_session:
-        return redirect('/login')
+    blog = session.query(Blog).filter_by(user_id=creator.id).one()
+    comments = session.query(Comment).filter_by(
+        post_id=post_id).order_by(Comment.commented_ts).all()
     if request.method == 'POST':
         login_session.pop('_flashes', None)
-
-        # creator itself cannot like its own post
-        if login_session['user_id'] == creator.id:
-            flash('You cannot like your own post.')
-            return redirect('/')
 
         # user cannot like the same post more than one time. If one tries to,
         # it raises integrity error (unique constraint failed)
@@ -126,17 +164,42 @@ def view_post(post_id):
             return redirect('/')
     else:
         # private post is only open to the creator itself
-        if post.publish == 'no' and creator.id != login_session['user_id']:
+        if post.publish == 'no' and creator.id != login_session.get('user_id'):
             flash('This post is private')
             return redirect('/')
+        if 'username' not in login_session:
+            return render_template("view_post.html", post=post,
+                                   comments=comments, blog=blog,
+                                   user_id=login_session.get('user_id'),
+                                   username=login_session.get('username'))
+        if creator.id == login_session.get('user_id'):
+            return render_template("view_post.html", post=post,
+                                   comments=comments, blog=blog,
+                                   user_id=login_session.get('user_id'),
+                                   username=login_session.get('username'))
         else:
             form = CommentForm()
-            comments = session.query(Comment).filter_by(
-                post_id=post_id).order_by(Comment.commented_ts).all()
+            return render_template("view_post.html", post=post, form=form,
+                                   comments=comments, blog=blog,
+                                   user_id=login_session.get('user_id'),
+                                   username=login_session.get('username'))
 
-            return render_template("view_post.html", post=post, form=form, comments=comments)
+
+@app.route('/viewpost/<int:post_id>/JSON')
+def view_post_JSON(post_id):
+    if 'username' not in login_session:
+        redirect('/login')
+    post = session.query(Post).filter_by(id=post_id).one()
+    # if the post is set to private, can be only shown to the creator
+    if post.publish == 'no' and login_session.get('user_id') != post.user_id:
+        return "You are not authorized for this contents"
+    comments = session.query(Comment).filter_by(
+        post_id=post_id).order_by(Comment.commented_ts).all()
+    return jsonify(post=post.serialize,
+                   comments=[c.serialize for c in comments])
 
 
+# handle the post request for leaving comments
 @app.route('/comment/<int:post_id>', methods=['GET', 'POST'])
 def comment_post(post_id):
     form = CommentForm()
@@ -153,55 +216,136 @@ def comment_post(post_id):
             comment.commented_ts).strftime('%Y-%m-%d %H:%M:%S')
         session.add(comment)
         session.commit()
-        comments = session.query(
-            Comment).filter_by(post_id=post_id).order_by(
-            Comment.commented_ts).all()
-
         return redirect(url_for('view_post', post_id=post_id))
-
     print form.errors
-    return render_template('view_post.html', post=post, form=form)
+    return render_template('view_post.html', post=post, form=form,
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'))
 
 
 @app.route('/editpost/<int:post_id>', methods=['GET', 'POST'])
 def edit_post(post_id):
     post = session.query(Post).filter_by(id=post_id).one()
-    # creator = session.query(User).filter_by(id=post.user_id).all()
+    creator = session.query(User).filter_by(id=post.user_id).one()
+
     # Populate the form from the data
     form = NewPostForm(obj=post)
+
+    # only creator of the post can edit it
+    if login_session['user_id'] != creator.id:
+        login_session.pop('_flashes', None)
+        flash('You do not have authorization to edit this post!')
+        return redirect(url_for('view_post', post_id=post_id))
+
     if form.validate_on_submit():
+        old_img = post.attached_img
         form.populate_obj(post)
-        post.last_modified = time()
         post.get_short_content()
+        post.last_modified = time()
         if form.image.data and allowed_file(form.image.data.filename):
+            # if there's previoused attached image
+            if old_img:
+                # first delete the previous file in the upload_folder
+                deleting_file = os.path.join(app.config['UPLOAD_FOLDER'],
+                                             old_img)
+                os.remove(deleting_file)
+            # then upload the new file
             file = form.image.data
-            post.attached_img = upload(file)
+            # save file with prefix(blog_id) and suffix(last_modified time)
+            post.attached_img = upload(file,
+                                       str(login_session['blog_id']),
+                                       str(int(post.last_modified)))
         session.add(post)
         session.commit()
         return redirect(url_for('view_post', post_id=post_id))
     print form.errors
-    return render_template('post.html', form=form,
+    return render_template('post.html', form=form, post=post,
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'),
                            action=url_for('edit_post', post_id=post.id))
 
 
 @app.route('/deletepost/<int:post_id>', methods=['GET', 'POST'])
 def delete_post(post_id):
     post = session.query(Post).filter_by(id=post_id).one()
-    # creator = session.query(User).filter_by(id=post.user_id).one()
+    creator = session.query(User).filter_by(id=post.user_id).one()
+    # only creator of the post can delete it
+    if login_session['user_id'] != creator.id:
+        login_session.pop('_flashes', None)
+        flash('You do not have authorization to delete this post!')
+        return redirect(url_for('view_post', post_id=post_id))
+
     if request.method == 'POST':
+        # if there's any attached image, also delete it from the upload folder
+        if post.attached_img:
+            deleting_file = os.path.join(app.config['UPLOAD_FOLDER'],
+                                         post.attached_img)
+            os.remove(deleting_file)
+
         session.delete(post)
         session.commit()
         flash('Your post is successfully deleted.')
         return redirect('/')
     else:
-        return render_template("delete_post.html", post=post)
+        return render_template("delete_post.html", post=post,
+                               user_id=login_session.get('user_id'),
+                               username=login_session.get('username'))
+
+
+@app.route('/blog/<int:user_id>', methods=['GET', 'POST'])
+def view_blog(user_id):
+    posts = session.query(Post).filter_by(user_id=user_id).all()
+    creator = session.query(User).filter_by(id=user_id).one()
+    blog = session.query(Blog).filter_by(user_id=user_id).one()
+
+    return render_template("view_blog.html",
+                           creator=creator, posts=posts, blog=blog,
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'))
+
+
+@app.route('/blog/<int:user_id>/JSON')
+def view_blog_JSON(user_id):
+    posts = session.query(Post).filter_by(user_id=user_id).all()
+    blog = session.query(Blog).filter_by(user_id=user_id).one()
+
+    return jsonify(blog=blog.serialize, posts=[p.serialize for p in posts])
+
+
+@app.route('/editblog/<int:user_id>', methods=['GET', 'POST'])
+def edit_blog(user_id):
+    blog = session.query(Blog).filter_by(user_id=user_id).one()
+    old_img = blog.profile_img
+    form = BlogForm(obj=blog)
+    if form.validate_on_submit():
+        blog.last_modified = time()
+        form.populate_obj(blog)
+        if form.image.data and allowed_file(form.image.data.filename):
+            if old_img:
+                # first delete the previous file in the upload_folder
+                deleting_file = os.path.join(app.config['UPLOAD_FOLDER'],
+                                             old_img)
+                os.remove(deleting_file)
+            # then upload the new file
+            file = form.image.data
+            # upload the file with prefix(blog_id), suffix(last_modified)
+            blog.profile_img = upload(file,
+                                      str(login_session['blog_id']),
+                                      str(int(blog.last_modified)))
+
+        session.add(blog)
+        session.commit()
+        return redirect(url_for('view_blog', user_id=user_id))
+    return render_template('blog_profile.html', form=form,
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'))
 
 
 @app.route('/logout')
 def disconnect():
     if 'provider' in login_session:
         if login_session['provider'] == 'google':
-            #  gdisconnect()
+            gdisconnect()
             del login_session['access_token']
             del login_session['gplus_id']
         if login_session['provider'] == 'facebook':
@@ -214,15 +358,154 @@ def disconnect():
         login_session.pop('user_id', None)
         login_session.pop('provider', None)
 
+
         flash('You have successfully been logged out.')
         return redirect(url_for('main_page'))
     else:
         flash("You were not logged in")
         return redirect(url_for('main_page'))
 
-# Facebook login/logout
+
+# for google login/logout
+###############
+# should fix google login- not working properly now
+# after that, added back to login.html
+##############
+@app.route('/gconnect', methods=['POST'])
+def gconnect():
+    # confirm the token that the client sends to the server matches what
+    # the server sent to the client. If these don't match, no further
+    # authentication occurs on the server side.
+    if request.args.get('state') != login_session['state']:
+        response = make_response(json.dumps('Invalid state parameter'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    # collect the one-time code from the server
+    code = request.data
+    try:
+        # Upgrade(exchange) the authorization code(one-time code)into a
+        # credentials object
+
+        # oauth_flow = oauth flow obj, add client's secret key info to it
+        oauth_flow = flow_from_clientsecrets('client_secret.json', scope='')
+        oauth_flow.redirect_uri = 'postmessage'
+        # inpupt = one-time code, exchanges it for a credental object
+        credentials = oauth_flow.step2_exchange(code)
+    except FlowExchangeError:
+        response = make_response(json.dumps(
+            'Failed to upgrade authorization code.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    # Once we have a credintials, check if there's a vaild access token in it
+    # Check that the access token is valid
+    access_token = credentials.access_token
+    # if we append this access_token into the google api url, it verifies
+    # whether it is a vaild acess token or not
+    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=%s'
+           % access_token)
+    # Here we create json GET requests containing url and access_token
+    h = httplib2.Http()
+    result = json.loads(h.request(url, 'GET')[1])
+    # req_json = req.decode('utf8').replace("'", '"')
+    # result = json.loads(req_json)
+    # If there was an error in the access_token info, abort
+    if result.get('error') is not None:
+        response = make_response(json.dumps(result.get('error')), 500)
+        response.headers['Content-Type'] = 'application/json'
+    # If there's no error, meaning that we have a WORKING access_token.
+    # But verify that the access token is used for intended user (right token)
+    # ID of the token in credentials object, compare with ID returned from api
+    gplus_id = credentials.id_token['sub']
+    if result['user_id'] != gplus_id:
+        response = make_response(
+            json.dumps("Token's user ID doesn't match given user ID"), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    # Also verify that the access token is valid for this app
+    # i.e., access token id == the id that my app is trying to use
+    if result['issued_to'] != CLIENT_ID:
+        response = make_response(
+            json.dumps("Token's client ID does not match app's"), 401)
+        print "Token's client ID does not match app's."
+        response.headers['Content-Type'] = 'application/json'
+        return response
+    # Check to see whether user is already logged in
+    stored_credentials = login_session.get('credentials')
+    stored_gplus_id = login_session.get('gplus_id')
+    if stored_credentials is not None and gplus_id == stored_gplus_id:
+        response = make_response(
+            json.dumps('Current user is already connected.'), 200)
+        response.headers['Content-Type'] = 'application/json'
+
+    # If none of those if statements above were true, then we have a valid
+    # access token and user successfully logged into my server
+    # Store the access token in the session for later use.
+    login_session['provider'] = 'google'
+    login_session['access_token'] = credentials.access_token
+    login_session['gplus_id'] = gplus_id
+
+    # Get user info
+    userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+    params = {'access_token': credentials.access_token, 'alt': 'json'}
+    answer = requests.get(userinfo_url, params=params)
+    data = json.loads(answer.text)
+
+    login_session['username'] = data["name"]
+    login_session['picture'] = data["picture"]
+    login_session['email'] = data["email"]
+
+    # See if user exists. If not, make a new one.
+    user_id = getUserID(email=login_session['email'])
+    if not user_id:
+        user_id = createUser(login_session)
+    login_session['user_id'] = user_id
+
+    output = ''
+    output += '<h1>Welcome, '
+    output += login_session['username']
+
+    output += '!</h1>'
+    output += '<img src="'
+    output += login_session['picture']
+    output += ' " style = "width: 100px; height: 100px; border-radius: 150px;\
+     -webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    flash("you are now logged in as %s" %
+          login_session['username'].encode('utf-8'))
+    return output
+
+# DISCONNECT - Revoke a current user's toekn and reset their login_session.
 
 
+@app.route("/gdisconnect")
+def gdisconnect():
+    # Only disconnect a connected user
+    access_token = login_session.get('access_token')
+    if access_token is None:
+        response = make_response(
+            json.dumps('Current user not connected.'), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    # Execute HTTP GET request to revoke current token.
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % access_token
+    h = httplib2.Http()
+    result = h.request(url, 'GET')[0]
+
+    if result['status'] == '200':
+
+        response = make_response(json.dumps('Successfully disconnected'), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    else:
+        # For any reason, the given token was invalid.
+        response = make_response(
+            json.dumps('Failed to revoke token for given user.'), 400)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+
+# Facebook login/logout 
 @app.route("/fbconnect", methods=['POST'])
 def fbconnect():
     # same as gconnect, for antiforgery
@@ -279,10 +562,7 @@ def fbconnect():
     login_session['picture'] = data["data"]["url"]
 
     # See if user exists. If not, make a new one.
-    user_id = getUserID(email=login_session['email'])
-    if not user_id:
-        user_id = createUser(login_session)
-    login_session['user_id'] = user_id
+    initialize_userinfo(login_session['email'])
 
     output = ''
     output += '<h1>Welcome, '
@@ -323,13 +603,46 @@ def getUserID(email):
         return None
 
 
+def get_blog_id(user_id):
+    try:
+        blog = session.query(Blog).filter_by(user_id=user_id).one()
+        return blog.id
+    except NoResultFound:
+        return None
+
+
 def createUser(login_session):
     newUser = User(username=login_session['username'], email=login_session[
-        'email'], picture=login_session['picture'], created=time())
+        'email'], picture=login_session['picture'])
     session.add(newUser)
     session.commit()
     user = session.query(User).filter_by(email=login_session['email']).one()
     return user.id
+
+
+def create_blog(login_session):
+    newBlog = Blog(user_id=login_session['user_id'],
+                   public_username=login_session['username'],
+                   created=time())
+    session.add(newBlog)
+    session.commit()
+    blog = session.query(Blog).filter_by(
+        user_id=login_session['user_id']).one()
+    return blog.id
+
+
+def initialize_userinfo(email):
+    # See if user exists. If not, make a new one.
+    user_id = getUserID(email=login_session['email'])
+    if not user_id:
+        user_id = createUser(login_session)
+    login_session['user_id'] = user_id
+
+    blog_id = get_blog_id(user_id=login_session['user_id'])
+    if not blog_id:
+        blog_id = create_blog(login_session)
+
+    login_session['blog_id'] = blog_id
 
 
 if __name__ == '__main__':

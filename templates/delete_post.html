@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-
+		<div class="col-md-1"></div>
+  		<div class="col-md-10 padding-none">
 		<h1> Are you sure you want to delete {{post.subject}}</h1>
 
 		<form action = "{{ url_for('delete_post', post_id=post.id)}}" method='post'>
@@ -9,4 +10,5 @@
 		
 
 		</form>
+	</div>
 {% endblock %}

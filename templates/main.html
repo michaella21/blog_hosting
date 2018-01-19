@@ -2,10 +2,7 @@
 {% block content %}
 
  
-  	<div class="row top-menu">
-  		<div class="col-md-10"></div>
-  		<div class="col-md-2 text-right"></div>
-  	</div>
+  	
   	<div class="row divider blue">
   		<div class="col-md-12"></div>
   	</div>
@@ -28,22 +25,19 @@
 				{% endif %}
 			{% endwith %}
 		</div>
-		<h2> Recent Posts </h2>
+		
 			<div class="row padding-top padding-bottom">
 					<div class="col-md-1"></div>
-					<div class="col-md-10 padding-none">
-						<a href="{{url_for('new_post')}}">
-							<button class="btn btn-default" id="new-restaurant">
-								<span class="glyphicon glyphicon-cutlery" area-hidden="true"></span> Write a new post
-							</button>
-						</a>
-					</div>
+					<div class="col-md-11 padding-none">
+						<h2> Recent Posts </h2></div>
+				
 				<div class="col-md-1"></div>
 			</div>
-		{% for p in recent %}
-			
+		
+			{% for p in recent %}
 				<div class="row">
 					<div class="col-md-1"></div>
+
 						<div class="col-md-10 restaurant-list">
 							<h3>{{p.subject}}</h3>
 							<a href ="{{ url_for('view_post', post_id=p.id)}}">
@@ -54,10 +48,10 @@
 			</a>
 		{% endfor %}
 
-  	<h2> Most Liked Posts </h2>
+  	
 			<div class="row padding-top padding-bottom">
 					<div class="col-md-1"></div>
-					<div class="col-md-10 padding-none"></div>
+					<div class="col-md-11 padding-none"><h2> Most Liked Posts </h2></div>
 
 				<div class="col-md-1"></div>
 			</div>
@@ -65,10 +59,13 @@
 			
 				<div class="row">
 					<div class="col-md-1"></div>
-						<div class="col-md-10 restaurant-list">
-							<h3>{{t.subject}}<h5>Likes: {{t.likes}}</h5></h3>
+						<div class="col-md-10">
+							<h3>{{t.subject}}</h3>
 							<a href ="{{ url_for('view_post', post_id=t.id)}}">
-							<h4>{{t.short_content}}<h4></a>
+							<h4>{{t.short_content}}<h4>
+								<button class="btn btn-primary" type="button">
+							<span class="glyphicon glyphicon-thumbs-up"></span>
+							<span class="badge"> {{t.likes}}</span></button></a>
 							
 						</div>
 					<div class="col-md-1"></div>

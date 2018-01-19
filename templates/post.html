@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-
+<div class="col-md-1"></div>
+<div class="col-md-8 padding-none">
 
 <h1> New Post</h1>
 {% for message in form.subject.errors %}
@@ -25,6 +26,12 @@
 			<dd>{{ form.content}}</dd>
 			<dt>{{ form.publish.label}}:</dt>
 			<dd>{{ form.publish}}</dd>
+			{% if post %}
+			{% if post.attached_img %}
+			<h4> You have uploaded the file {{post.attached_img}}. If you wish to delete this file
+			and upload a different one, please use the uploader below. </h4>
+			{% endif %}
+			{% endif %}
 			<dt>{{ form.image.label}}</dt>
 			<dd>{{ form.image}}</dd>
 			<br>
@@ -32,6 +39,8 @@
 		</dl>
 
 </form>
+</div>
+<div class="col-md-3"></div>
 </div>
 
 {% endblock %}

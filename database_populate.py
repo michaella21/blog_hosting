@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from models import Base, User, Post, Comment, Likes
+from models import Base, User, Blog, Post, Comment, Likes
 
 engine = create_engine('sqlite:///bloghost.db')
 # Bind the engine to the metadata of the Base class so that the
@@ -32,14 +32,29 @@ session.add(User1)
 session.add(User2)
 session.add(User3)
 
+# Create dummy user's blogs
+Blog1 = Blog(user_id=2,
+             blog_name="dream a little dream",
+             public_username="dreaming ninja",
+             short_intro="writing about my everyday thoughts",
+             location="LA, USA")
+Blog2 = Blog(user_id=3,
+             public_username="Jersey Girl",
+             location="NY, USA")
+
+session.add(Blog1)
+session.add(Blog2)
+
 # Create dummy user's posts
 Post1 = Post(user_id=2,
+             blog_id=1,
              subject="Lorem ipsum",
              content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
              publish="no"
              )
 Post1.get_short_content()
 Post2 = Post(user_id=3,
+             blog_id=2,
              subject="Blah Blah",
              content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
              publish="etc",

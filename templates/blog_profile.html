@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+
+
+
+
+
+
+		<div class ='row divider green'>		
+			<div class="col-md-1"></div>
+  		<div class="col-md-8 padding-none">
+  			<h1> Add/Edit your profile</h1>
+		<form method='post' enctype='multipart/form-data' action="{{ action }}">
+			{{ form.hidden_tag() }}
+			<dl>
+			<dt>{{ form.blog_name.label}}:</dt> 
+			<dd>{{ form.blog_name}}</dd>
+			{% for message in form.blog_name.errors %}
+			<div>{{message}}</div>
+			{% endfor %}
+			<br>
+
+			<br>
+			<dt>{{ form.public_username.label}}:</dt>
+			<dd>{{ form.public_username}}</dd>
+			{% for message in form.public_username.errors %}
+			<div>{{message}}</div>
+			{% endfor %}
+			<br>
+			
+			<dt>{{ form.short_intro.label}}:</dt>
+			<dd>{{ form.short_intro}}</dd>
+			{% for message in form.short_intro.errors %}
+			<div>{{message}}</div>
+			{% endfor %}
+			<br>
+
+				<dt>{{ form.image.label}}:</dt>
+			<dd>{{ form.image}}</dd>
+		
+		  <br>
+
+			<dt>{{ form.location.label}}:</dt>
+			<dd>{{ form.location}}</dd>
+	 
+			<br>
+		
+		
+			{{ form.submit }}
+		</dl>
+
+</form>
+</div>
+<div class="col-md-3"></div>
+</div>
+
+{% endblock %}
