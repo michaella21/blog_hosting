@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+  	
+
+
+		<div class ='flash'>
+			{% with messages = get_flashed_messages() %}
+				{%if messages %}
+					<script>
+						var messages ={{ messages | safe}};
+						for (var i=0; i < messages.length; i++){
+							alert(messages[i]);
+						}
+					</script>
+				{% endif %}
+			{% endwith %}
+		</div>
+		
+		
+		 <div class="blog-second-title"> Recent Posts </div>
+		 <br>
+			{% for p in recent %}
+				
+		 <div class="blog-post">
+
+			<h4 class="blog-post-title">{{p.subject}}</h4>
+			
+			<a href ="{{ url_for('view_post', post_id=p.id)}}">
+				<p class="blog-post-meta">{{p.short_content}}
+			</a></p>
+		</div>
+	
+		{% endfor %}
+
+ 
+	
+	
+		
+	
+{% endblock %}
