@@ -37,11 +37,13 @@ class CommentForm(BaseForm):
 
 class BlogForm(BaseForm):
     blog_name = TextField("Would you like to change your blog name?",
-                     [validators.Length(min=1, max=250)])
-    public_username = TextField("You can change the username shown to other users",[validators.Length(min=4, max=32)])
-    short_intro = TextField("Add one line introduction to your blog",[validators.Length(max=300)]) 
-    image = FileField("You can upload your profile picture.\
-                        pdf, jpg, jpeg, png, gif files upto 16MB accepted')")
+                          [validators.Length(min=1, max=250)])
+    public_username = TextField("You can change the username shown to other\
+     users", [validators.Length(min=4, max=32)])
+    short_intro = TextField("Add one line introduction to your blog",
+                            [validators.Length(max=300)])
+    image = FileField("Upload your profile picture.\
+                        pdf, jpg, jpeg, png, gif files upto 16MB accepted)")
     location = TextField("Your location? (city, country)")
 
     submit = SubmitField("submit")

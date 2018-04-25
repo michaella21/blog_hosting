@@ -2,16 +2,9 @@
 {% block content %}
 
 
-
-
-
-
-
-
-		<div class ='row divider green'>		
-			<div class="col-md-1"></div>
-  		<div class="col-md-8 padding-none">
-  			<h1> Add/Edit your profile</h1>
+		<div class ='row'>	
+  		<div class="col-md-12 blog-meta">
+  		
 		<form method='post' enctype='multipart/form-data' action="{{ action }}">
 			{{ form.hidden_tag() }}
 			<dl>
@@ -20,7 +13,7 @@
 			{% for message in form.blog_name.errors %}
 			<div>{{message}}</div>
 			{% endfor %}
-			<br>
+			
 
 			<br>
 			<dt>{{ form.public_username.label}}:</dt>

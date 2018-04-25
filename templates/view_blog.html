@@ -1,56 +1,47 @@
 {% extends "base.html" %}
 {% block content %}
 
- 
-  	<div class="row divider blue">
-  		<div class="col-md-12"></div>
-  	</div>
-  	<div class="row banner main">
-  		<div class="col-md-1"></div>
-  		<div class="col-md-8 padding-none">
-  			<h1> {{blog.blog_name}} </h1>
-  		</div>
-  		<div class="col-md-3">
-  		{% if creator.id == user_id %}
-  		<a href="{{url_for('edit_blog', user_id=creator.id)}}">
-							<button class="btn btn-default" id="new-restaurant">
+			<div class="row">
+				<div class="col-md-7">
+  				<div class="blog-second-title"> {{blog.blog_name}} </div>
+  			</div>
+  			<div class="col-md-5">
+  				{% if creator.id == user_id %}
+  					<a href="{{url_for('edit_blog', user_id=creator.id)}}">
+							<button class="btn btn-default pull-right" id="edit-blog">
 								<span class="glyphicon glyphicon-edit" area-hidden="true"></span> Change your blog information
 							</button>
 						</a>
-			{% endif %}
-  	</div>
-  </div>
-  <div class="row banner main">
-  	<div class="col-md-1"></div>
-  		<div class="col-md-8 padding-none">
+				</div>
+
+					{% endif %}
+  		</div>
+  		<div class="row">
+
+  
   {% if blog.profile_img %}
-  <img src="{{url_for('uploaded_file', filename= blog.profile_img)}}">
+
+  	<img src="{{url_for('uploaded_file', filename= blog.profile_img)}}" id="profile_img">
+
   {% endif %}
- </div>
-   <div class="col-md-3">
-   </div></div>
-		<br>
-			<div class="row padding-top padding-bottom">
-					<div class="col-md-1"></div>
-					<div class="col-md-8 padding-none">
-						<h2> Posts by {{blog.public_username}} </h2></div>
-					<div class="col-md-3">
-						
-					</div>
-				</div>
-			</div>
+ 	</div>
+ 	<br>
+ 	<div class="row">
+
+		<div class="col-md-8 blog-second-title">
+		Posts by {{blog.public_username}}</div>
+		<div class="col-md-4"></div>
+	</div>					
+	<br>
+	
 		{% for p in posts %}
+			<div class="blog-post">
+			<h4 class="blog-post-title">{{p.subject}}</h4>
 			
-				<div class="row">
-					<div class="col-md-1"></div>
-						<div class="col-md-10 restaurant-list">
-							<h3>{{p.subject}}</h3>
-							<a href ="{{ url_for('view_post', post_id=p.id)}}">
-							<h4>{{p.short_content}}<h4>
-						</div>
-					<div class="col-md-1"></div>
-				</div>
-			</a>
+			<a href ="{{ url_for('view_post', post_id=p.id)}}">
+				<p class="blog-post-meta">{{p.short_content}}
+			</a></p>
+			</div>
 		{% endfor %}
 
 {% endblock %}

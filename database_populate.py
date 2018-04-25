@@ -49,14 +49,22 @@ session.add(Blog2)
 Post1 = Post(user_id=2,
              blog_id=1,
              subject="Lorem ipsum",
-             content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+             content="Lorem ipsum dolor sit amet, consectetur adipiscing" +
+                     "elit, sed do eiusmod tempor incididunt ut labore et" +
+                     "dolore magna aliqua. Ut enim ad minim veniam, quis" +
+                     "nostrud exercitation ullamco laboris nisi ut aliquip" +
+                     "ex ea commodo consequat.",
              publish="no"
              )
 Post1.get_short_content()
 Post2 = Post(user_id=3,
              blog_id=2,
              subject="Blah Blah",
-             content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+             content="Lorem ipsum dolor sit amet, consectetur adipiscing" +
+                     "elit, sed do eiusmod tempor incididunt ut labore et" +
+                     "dolore magna aliqua. Ut enim ad minim veniam, quis" +
+                     "nostrud exercitation ullamco laboris nisi ut aliquip" +
+                     "ex ea commodo consequat.",
              publish="etc",
              likes=2)
 Post2.get_short_content()

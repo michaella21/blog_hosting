@@ -10,26 +10,21 @@ from datetime import datetime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import exc
+from sqlalchemy import exc, and_
 
 from flask import Flask, render_template, request, redirect, url_for
-from flask import flash, make_response, jsonify, g
+from flask import flash, make_response, jsonify
 from flask import session as login_session
 from flask import send_from_directory
 
 # http://flask.pocoo.org/docs/0.12/patterns/fileuploads/
 from werkzeug.utils import secure_filename
 
-# need to install
-# https://developers.google.com/api-client-library/python/auth/
-# web-app#protectauthcode 
-#import google.oauth2.credentials
-#import google_auth_oauthlib.flow
-
-from flask_oauthlib.client import OAuth
-
+from oauth2client.client import flow_from_clientsecrets
+from oauth2client.client import FlowExchangeError
 from models import Base, User, Post, Blog, Likes, Comment
 from forms import NewPostForm, CommentForm, BlogForm
+import requests
 
 sys.path.append('../')
 engine = create_engine('sqlite:///bloghost.db')
@@ -37,11 +32,15 @@ Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 app = Flask(__name__)
-oauth = OAuth(app)
+# oauth = OAuth(app)
 
 UPLOAD_FOLDER = 'static/photos'
 ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'jpeg', 'gif'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+CLIENT_ID = json.loads(
+    open('google_client_secrets.json', 'r').read())['web']['client_id']
+APPLICATION_NAME = "Restaurant Menu Application"
 
 
 # check the file extension preventing XSS problems
@@ -84,9 +83,7 @@ def main_page():
         Post.publish != 'no').order_by(Post.created).limit(5)
     tops = session.query(Post).filter(
         Post.publish != 'no').order_by(Post.likes).limit(5)
-    for key in login_session:
-        print key, login_session[key]
-    
+
     return render_template("main.html",
                            recent=recent,
                            tops=tops,
@@ -341,6 +338,82 @@ def edit_blog(user_id):
                            username=login_session.get('username'))
 
 
+@app.route('/recent')
+def view_recent_posts():
+    recent = session.query(Post).filter(
+        Post.publish != 'no').order_by(Post.created).all()
+    return render_template("recent_posts.html",
+                           recent=recent,
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'))
+
+
+@app.route('/recent/JSON')
+def view_recent_posts_JSON():
+    recent = session.query(Post).filter(
+        Post.publish != 'no').order_by(Post.created).all()
+    return jsonify(recent=[r.serialize for r in recent])
+
+
+@app.route('/categories')
+def view_categories():
+    def category_filter(cat):
+        return session.query(Post).filter(
+            and_(Post.publish == cat, Post.publish != 'no')).order_by(
+            Post.created).all()
+
+    cats = ['review', 'food', 'politics', 'travel', 'animal', 'life', 'etc']
+    cats_title = {'review': 'Book/Movie/TV Show reviews',
+                  'food': 'Food/Restaurant',
+                  'politics': 'Politics',
+                  'travel': 'Travel',
+                  'animal': 'Cute Animals',
+                  'life': 'Daily Live',
+                  'etc': 'Uncategorized'}
+    cats_posts = {}
+    for cat in cats:
+        cats_posts[cat] = category_filter(cat)
+
+    return render_template("categories_posts.html",
+                           cats_title=cats_title,
+                           cats_posts=cats_posts,
+                           user_id=login_session.get('user_id'),
+                           username=login_session.get('username'))
+
+
+@app.route('/categories/JSON')
+def view_categories_JSON():
+    def category_filter(cat):
+        return session.query(Post).filter(
+            and_(Post.publish == cat, Post.publish != 'no')).order_by(
+            Post.created).all()
+
+    cats = ['review', 'food', 'politics', 'travel', 'animal', 'life', 'etc']
+    cats_posts = {}
+    for cat in cats:
+        cats_posts[cat] = category_filter(cat)
+    return jsonify(
+        posts=[[r.serialize for r in cats_posts[cat]] for cat in cats])
+
+
+@app.route('/categories/<category>')
+def view_single_category(category):
+    posts_in_category = session.query(Post).filter(
+        Post.publish != 'no', Post.publish == category).order_by(
+        Post.created).all()
+    return render_template("single_cateory_posts.html",
+                           category=category,
+                           posts=posts_in_category)
+
+
+@app.route('/categories/<category>/JSON')
+def view_single_category_JSON(category):
+    posts_in_category = session.query(Post).filter(
+        Post.publish != 'no', Post.publish == category).order_by(
+        Post.created).all()
+    return jsonify(posts=[p.serialize for p in posts_in_category])
+
+
 @app.route('/logout')
 def disconnect():
     if 'provider' in login_session:
@@ -358,7 +431,6 @@ def disconnect():
         login_session.pop('user_id', None)
         login_session.pop('provider', None)
 
-
         flash('You have successfully been logged out.')
         return redirect(url_for('main_page'))
     else:
@@ -367,10 +439,6 @@ def disconnect():
 
 
 # for google login/logout
-###############
-# should fix google login- not working properly now
-# after that, added back to login.html
-##############
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
     # confirm the token that the client sends to the server matches what
@@ -387,7 +455,8 @@ def gconnect():
         # credentials object
 
         # oauth_flow = oauth flow obj, add client's secret key info to it
-        oauth_flow = flow_from_clientsecrets('client_secret.json', scope='')
+        oauth_flow = flow_from_clientsecrets(
+            'google_client_secrets.json', scope='')
         oauth_flow.redirect_uri = 'postmessage'
         # inpupt = one-time code, exchanges it for a credental object
         credentials = oauth_flow.step2_exchange(code)
@@ -473,9 +542,8 @@ def gconnect():
           login_session['username'].encode('utf-8'))
     return output
 
+
 # DISCONNECT - Revoke a current user's toekn and reset their login_session.
-
-
 @app.route("/gdisconnect")
 def gdisconnect():
     # Only disconnect a connected user
@@ -505,7 +573,7 @@ def gdisconnect():
         return response
 
 
-# Facebook login/logout 
+# Facebook login/logout
 @app.route("/fbconnect", methods=['POST'])
 def fbconnect():
     # same as gconnect, for antiforgery
@@ -648,4 +716,4 @@ def initialize_userinfo(email):
 if __name__ == '__main__':
     app.debug = True
     app.secret_key = 'super_secret_key'
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=5000)

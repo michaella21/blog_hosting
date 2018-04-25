@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, UniqueConstraint
-from sqlalchemy import Boolean, Integer, String, Text, Float
+from sqlalchemy import Integer, String, Text, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 # from sqlalchemy.sql import functions as func
@@ -8,8 +8,8 @@ from sqlalchemy import create_engine
 from passlib.apps import custom_app_context as pwd_context
 import random
 import string
-from itsdangerous import (
-    TimedJSONWebSignatureSerializer as Serializer, BadSignature, SignatureExpired)
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from itsdangerous import BadSignature, SignatureExpired
 
 Base = declarative_base()
 secret_key = ''.join(random.choice(

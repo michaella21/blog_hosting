@@ -1,17 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-
- 
   	
-  	<div class="row divider blue">
-  		<div class="col-md-12"></div>
-  	</div>
-  	<div class="row banner main">
-  		<div class="col-md-1"></div>
-  		<div class="col-md-11 padding-none">
-  			<h1> Current Most Liked Articles </h1>
-  		</div>
-  	</div>
+
 
 		<div class ='flash'>
 			{% with messages = get_flashed_messages() %}
@@ -26,50 +16,37 @@
 			{% endwith %}
 		</div>
 		
-			<div class="row padding-top padding-bottom">
-					<div class="col-md-1"></div>
-					<div class="col-md-11 padding-none">
-						<h2> Recent Posts </h2></div>
-				
-				<div class="col-md-1"></div>
-			</div>
 		
+		 <div class="blog-second-title"> Recent Posts </div>
+		 <br>
 			{% for p in recent %}
-				<div class="row">
-					<div class="col-md-1"></div>
+				
+		 <div class="blog-post">
 
-						<div class="col-md-10 restaurant-list">
-							<h3>{{p.subject}}</h3>
-							<a href ="{{ url_for('view_post', post_id=p.id)}}">
-							<h4>{{p.short_content}}<h4>
-						</div>
-					<div class="col-md-1"></div>
-				</div>
-			</a>
+			<h4 class="blog-post-title">{{p.subject}}</h4>
+			
+			<a href ="{{ url_for('view_post', post_id=p.id)}}">
+				<p class="blog-post-meta">{{p.short_content}}
+			</a></p>
+		</div>
+	
 		{% endfor %}
 
-  	
-			<div class="row padding-top padding-bottom">
-					<div class="col-md-1"></div>
-					<div class="col-md-11 padding-none"><h2> Most Liked Posts </h2></div>
+  	<div class="blog-second-title"> Most Liked Posts </div>
+		<br>
 
-				<div class="col-md-1"></div>
-			</div>
 		{% for t in tops %}
+		
+		<div class= "blog-post">
+			<h4 class="blog-post-title">{{t.subject}}</h4>
+			<a href ="{{ url_for('view_post', post_id=t.id)}}">
+			<p class="blog-post-meta">{{t.short_content}}
+			</p></a>
 			
-				<div class="row">
-					<div class="col-md-1"></div>
-						<div class="col-md-10">
-							<h3>{{t.subject}}</h3>
-							<a href ="{{ url_for('view_post', post_id=t.id)}}">
-							<h4>{{t.short_content}}<h4>
-								<button class="btn btn-primary" type="button">
+				<button class="btn btn-primary" type="button">
 							<span class="glyphicon glyphicon-thumbs-up"></span>
-							<span class="badge"> {{t.likes}}</span></button></a>
-							
-						</div>
-					<div class="col-md-1"></div>
-				</div>
+							<span class="badge"> {{t.likes}}</span></button>
+		</div>
 			
 		{% endfor %}
 	
