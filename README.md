@@ -1,6 +1,6 @@
 # Blog_Hosting 
 ### with Python 2.7/ Flask/ SQLAlchemy/ SQLite
-This repository contains files to create a blog hosting app. In this app, user can write own post as well as read someone else's recent and/or popular posts. By logging in with user's facebook or gmail account, user can also add a comment to the other users' posts or 'Like' it. User can attach an image file to own post as well as to its own profile picture.
+This repository contains files to create a blog hosting app which is essentiallly blog-SNS. In this app, user can write own post and decide whether he/she wants to publish it in a certain category or keep the post as private. Once it is published, it is shown in the front page and other users can read and vote for the popularity. By logging in with user's facebook or gmail account, user can also add a comment to the other users' posts or 'Like' it. User can attach an image file to own post as well as to its own profile picture.
 
 This app also provides the JSON endpoint. For the front(main) page('/' or '/main'), user's blog page('/blog/<blog_id>'), and each post page('/viewpost/<post_id>'), total category(/categorie) and each category(/categories/<category>)add '/JSON' at the end of each url should provide the JSON format of the same data included in HTML endpoint. 
 
